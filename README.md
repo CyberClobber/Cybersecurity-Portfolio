@@ -138,29 +138,63 @@ Esta información permite reconstruir la cadena padre-hijo de procesos, facilita
 ---
 ---
 
-## Caso de Uso 3: Ataque de Fuerza Bruta por RDP (Autenticación)
+## Caso de Uso 3: Ataque de Fuerza Bruta por RDP
 
 ### Objetivo del atacante
-Intentar ganar acceso inicial al Controlador de Dominio mediante un ataque de fuerza bruta por diccionario contra el servicio de Escritorio Remoto (RDP), apuntando al usuario con más privilegios del sistema (`administrator`).
 
-### Comando ejecutado (Desde Kali Linux)
-Se utilizó la herramienta **Hydra** con un diccionario personalizado de contraseñas para generar ruido inmediato y secuencial en el puerto `3389`:
+Obtener acceso inicial al Controlador de Dominio mediante un ataque de fuerza bruta por diccionario contra el servicio de **Remote Desktop Protocol (RDP)**, dirigido a la cuenta con mayores privilegios del sistema (**Administrator**).
+
+### Comando ejecutado (Kali Linux)
+
+Se utilizó la herramienta **Hydra** junto con un diccionario personalizado de contraseñas para generar múltiples intentos de autenticación fallidos contra el puerto **3389**.
 
 ```bash
 hydra -l administrator -P contras_fuerza_bruta.txt rdp://192.168.10.10 -vV -t 1
 ```
+
+---
+
 ### Detección en Wazuh
-El SIEM recolectó con éxito los eventos de seguridad nativos de Windows (**Event ID 4625** - *Logon Failure*). 
 
-Al procesar la ráfaga de intentos fallidos en un corto periodo de tiempo, el motor de correlación de Wazuh agrupó las alertas individuales de nivel 5 (`rule.id: 60122`) y disparó una alerta unificada de **Gravedad 10 (Critical Alert)** reconociendo el patrón de ataque de fuerza bruta.
+Wazuh recopiló correctamente los eventos de seguridad generados por Windows correspondientes al **Event ID 4625 (Failed Logon)**.
 
-Al inspeccionar los detalles del documento, el SIEM proporciona un enriquecimiento forense clave para el analista:
-* **Mapeo MITRE ATT&CK:** Clasificado bajo la táctica *Credential Access* y técnica *Brute Force* (**T1110**).
-* **Origen del Ataque:** El log identifica con precisión el nombre de la máquina origen (`Workstation Name: kali`) y su dirección IP (`Source Network Address`).
-* **Cumplimiento:** Enlazado automáticamente con controles de normativas NIST 800-53, GDPR y HIPAA.
+Tras detectar numerosos intentos de autenticación fallidos en un intervalo reducido de tiempo, el motor de correlación agrupó los eventos individuales y generó una alerta de mayor severidad, identificando el patrón como un posible ataque de fuerza bruta.
+
+---
+
+### Evidencias detectadas
+
+- **Evento de Windows:** Event ID **4625** (Failed Logon).
+- **Regla de Wazuh:** `rule.id: 60122`.
+- **Nivel inicial de alerta:** **5**.
+- **Alerta correlacionada:** **Nivel 10 (Critical Alert)**.
+
+---
+
+### Información forense obtenida
+
+La alerta proporciona información relevante para el análisis del incidente, entre la que destaca:
+
+- **Mapeo MITRE ATT&CK**
+  - **Táctica:** Credential Access
+  - **Técnica:** T1110 – Brute Force
+
+- **Origen del ataque**
+  - **Workstation Name:** `kali`
+  - **Source Network Address:** Dirección IP del equipo atacante.
+
+- **Cumplimiento normativo**
+  - Asociación automática con controles de:
+    - NIST 800-53
+    - GDPR
+    - HIPAA
+
+---
+### Evidencia de la alerta
 
 ![Detalles forenses y mapeo MITRE ATT&CK de la alerta de fuerza bruta](images/rdp-bruteforce-details.png)
 
+**Figura:** Alerta correlacionada de Wazuh detectando un ataque de fuerza bruta contra el servicio RDP.
 
 # 🧠 4. Lecciones Aprendidas y Troubleshooting
 
