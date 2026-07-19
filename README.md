@@ -133,6 +133,8 @@ net localgroup administrators
 
 Esta información permite reconstruir la cadena padre-hijo de procesos, facilitando el análisis durante una investigación forense.
 
+![Detalle forense en formato Tabla de Sysmon Event ID 1](images/sysmon-ev1-json.png)
+
 ---
 
 # 🧠 4. Lecciones Aprendidas y Troubleshooting
