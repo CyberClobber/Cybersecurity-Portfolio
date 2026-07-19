@@ -91,6 +91,8 @@ whoami /priv
 
 Wazuh registró correctamente la ejecución del comando, generando una alerta correspondiente al inicio del proceso. Este evento permitió comprobar cómo el SIEM correlaciona la creación de procesos iniciados desde la consola de comandos.
 
+![Lista de Alertas capturadas en el panel de Wazuh](images/wazuh-alerts.png)
+
 ---
 
 ## Caso de Uso 2: Enumeración del grupo de Administradores Locales
@@ -222,6 +224,8 @@ Se determinó que el evento correspondía a un comportamiento legítimo del sist
 Los servicios internos de Windows utilizan frecuentemente directorios temporales para almacenar archivos durante tareas de diagnóstico.
 
 En consecuencia, la alerta fue clasificada como un **falso positivo**, evitando así generar fatiga de alertas dentro del SOC.
+
+![Estructura JSON de la alerta de falso positivo en Wazuh](images/false-positive-json.png)
 
 ---
 
