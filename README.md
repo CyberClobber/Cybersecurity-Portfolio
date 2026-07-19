@@ -136,6 +136,31 @@ Esta información permite reconstruir la cadena padre-hijo de procesos, facilita
 ![Detalle forense en formato Tabla de Sysmon Event ID 1](images/sysmon-ev1-json.png)
 
 ---
+---
+
+## Caso de Uso 3: Ataque de Fuerza Bruta por RDP (Autenticación)
+
+### Objetivo del atacante
+Intentar ganar acceso inicial al Controlador de Dominio mediante un ataque de fuerza bruta por diccionario contra el servicio de Escritorio Remoto (RDP), apuntando al usuario con más privilegios del sistema (`administrator`).
+
+### Comando ejecutado (Desde Kali Linux)
+Se utilizó la herramienta **Hydra** con un diccionario personalizado de contraseñas para generar ruido inmediato y secuencial en el puerto `3389`:
+
+```bash
+hydra -l administrator -P contras_fuerza_bruta.txt rdp://192.168.10.10 -vV -t 1
+```
+### Detección en Wazuh
+El SIEM recolectó con éxito los eventos de seguridad nativos de Windows (**Event ID 4625** - *Logon Failure*). 
+
+Al procesar la ráfaga de intentos fallidos en un corto periodo de tiempo, el motor de correlación de Wazuh agrupó las alertas individuales de nivel 5 (`rule.id: 60122`) y disparó una alerta unificada de **Gravedad 10 (Critical Alert)** reconociendo el patrón de ataque de fuerza bruta.
+
+Al inspeccionar los detalles del documento, el SIEM proporciona un enriquecimiento forense clave para el analista:
+* **Mapeo MITRE ATT&CK:** Clasificado bajo la táctica *Credential Access* y técnica *Brute Force* (**T1110**).
+* **Origen del Ataque:** El log identifica con precisión el nombre de la máquina origen (`Workstation Name: kali`) y su dirección IP (`Source Network Address`).
+* **Cumplimiento:** Enlazado automáticamente con controles de normativas NIST 800-53, GDPR y HIPAA.
+
+![Detalles forenses y mapeo MITRE ATT&CK de la alerta de fuerza bruta](images/rdp-bruteforce-details.png)
+
 
 # 🧠 4. Lecciones Aprendidas y Troubleshooting
 
