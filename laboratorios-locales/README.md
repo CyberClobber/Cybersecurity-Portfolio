@@ -196,11 +196,89 @@ La alerta proporciona información relevante para el análisis del incidente, en
 
 **Figura:** Alerta correlacionada de Wazuh detectando un ataque de fuerza bruta contra el servicio RDP.
 
+---
+---
+## Caso de Uso 4: Ataque de Fuerza Bruta por SMB (Puerto 445) y Análisis NTLM
+
+Objetivo del atacante
+Simular una ráfaga masiva de intentos de inicio de sesión (*Password Spraying / Fuerza Bruta*) contra el servicio de compartición de archivos SMB (`445/TCP`) en el Controlador de Dominio (`DC-01`) desde Kali Linux.
+
+Comando ejecutado (Kali Linux)
+Debido a la restricción de negociación de dialectos antiguos en Windows Server 2022, se utilizó un bucle automatizado enviando solicitudes directas mediante `smbclient`:
+
+```bash
+for i in {1..10}; do smbclient //192.168.243.129/C$ -U "Administrator\%WrongPass$i"; done
+```
+
+Detección y Correlación en Wazuh
+El agente de Wazuh en Windows Server registró los eventos individuales de fallo de autenticación (Event ID 4625). Al acumularse múltiples intentos en un intervalo reducido de segundos, el motor de Wazuh escaló la alerta a nivel crítico.
+
+Evidencias e Indicadores de Compromiso (IoCs):
+
+Regla Individual: rule.id: 60122 (Nivel 5) – Logon Failure - Unknown user or bad password.
+
+Regla Correlacionada: rule.id: 60204 (Nivel 10 - Severidad Alta 🔴) – Multiple Windows Logon Failures.
+
+Paquete de Autenticación: NTLM / NTLMSSP.
+
+Tipo de Logon: 3 (Network Logon).
+
+IP Origen Atacante: 192.168.243.128 (Kali Linux).
+
+![Alerta Nivel 10 Wazuh](./images/Wazuh-Nivel-10.png)
+*Figura: Escalado automático en Wazuh a una Alerta Crítica de Nivel 10 tras detectar la ráfaga de intentos fallidos.*
+
+---
+
+![Inspección NTLM Wazuh](./images/Inspección-IP-paquete-NTLM..png)
+*Figura: Detalle forense del evento en Wazuh mostrando la IP atacante y el paquete de autenticación NTLM.*
+
+---
+---
+## Caso de Uso 5: Detección de Tráfico y Firmas de Red con Suricata NIDS
+
+Objetivo del atacante
+Identificar actividad anómala a nivel de interfaz de red (escaneo de puertos / firmas IDS) antes de que alcance las capas internas del sistema operativo.
+
+Configuración e Integración
+Suricata inspecciona el tráfico de red y escribe los eventos en `/var/log/suricata/eve.json`. Wazuh procesa este archivo en tiempo real mediante la integración JSON en `ossec.conf`:
+
+```xml
+<localfile>
+  <log_format>json</log_format>
+  <location>/var/log/suricata/eve.json</location>
+</localfile>
+```
+---
+---
+
+## Caso de Uso 6: Ingeniería de Detección – Regla Personalizada para Evasión en PowerShell (Rule ID 100002)
+
+#### 🎯 Objetivo del Atacante
+Ejecutar comandos en PowerShell utilizando argumentos codificados en Base64 (`-e` / `-EncodedCommand`) para intentar evadir controles de seguridad tradicionales y filtros de firmas de texto plano (Técnica MITRE ATT&CK: **T1059.001**).
+
+#### 🛠️ Regla Personalizada Implementada (`local_rules.xml`)
+Se configuró una regla custom de **Nivel 12 (Crítico)** que inspecciona la línea de comandos emitida por los eventos de creación de procesos de Sysmon (`if_sid: 61603` / Event ID 1):
+
+```xml
+<rule id="100002" level="12">
+  <if_sid>61603</if_sid>
+  <field name="win.eventdata.commandLine" type="pcre2">(?i)-e(ncodedcommand)?</field>
+  <description>SOC Lab: Se detectó ejecución sospechosa de PowerShell codificado en Base64 (-EncodedCommand)</description>
+  <mitre>
+    <id>T1059.001</id>
+  </mitre>
+</rule>
+```
+![Alerta Custom 100002 en Wazuh](./images/powershell_custom_rule_wazuh.png)
+*Figura: Confirmación en Wazuh Discover de la regla personalizada 100002 disparada tras la ejecución de PowerShell codificado.*
+
+---
+
 # 🧠 4. Lecciones Aprendidas y Troubleshooting
 
 Durante el desarrollo del laboratorio surgieron varios problemas habituales en entornos SOC reales. Resolverlos permitió comprender mejor el funcionamiento de Wazuh y Sysmon.
-
----
+--
 
 ## Reto 1: Alertas invisibles (Clock Drift)
 
@@ -290,15 +368,33 @@ En consecuencia, la alerta fue clasificada como un **falso positivo**, evitando 
 
 ---
 
-# 🛠️ Herramientas Utilizadas
+## Reto 4: Bloqueo de Sincronización Horaria y Desfase de 6 Horas (Clock Drift)
 
-| Herramienta | Descripción |
-|------------|-------------|
-| **SIEM/XDR** | Wazuh Manager v4.x |
-| **Telemetría del host** | Microsoft Sysmon v15.x |
-| **Sistema Operativo** | Windows Server 2022 |
-| **Sistema de Monitorización** | Kali Linux |
-| **Infraestructura** | Active Directory Lab |
+### Problema
+Las alertas generadas en Windows Server aparecían con 6 horas de retraso en el panel de Wazuh, impidiendo la visibilidad en tiempo real (*Live Dashboard*). La interfaz de Windows bloqueaba los cambios con el mensaje *"Some of these settings are managed by your organization"*.
+
+### Causa
+VMware Tools tenía activada la sincronización automática del "Guest" con el "Host", sobrescribiendo cualquier cambio de hora o zona horaria ejecutado en el sistema operativo.
+
+### Solución
+1. Desactivar la opción en VMware Workstation: **VM > Settings > Options > VMware Tools > Desmarcar "Synchronize guest time with host"**.
+2. Forzar la zona horaria correcta de España y reiniciar el servicio de hora en PowerShell:
+
+```powershell
+Set-TimeZone -Id "Romance Standard Time"
+net stop w32time ; net start w32time
+```
+
+### 🛠️ Herramientas Utilizadas
+
+| Herramienta | Tipo / Categoría | Descripción / Función en el Lab |
+| :--- | :--- | :--- |
+| **Wazuh Manager v4.x** | SIEM / XDR | Centralización, correlación de logs y motor de alertas. |
+| **Microsoft Sysmon v15.x** | HIDS / Endpoint Telemetry | Auditoría avanzada de procesos, líneas de comando (Event ID 1) y hashes. |
+| **Suricata v7.x** | NIDS / Network Security | Inspección profunda de paquetes y detección de firmas de red (`eve.json`). |
+| **Windows Server 2022** | Host Objetivo / Target | Controlador de Dominio (`DC-01`) monitoreado por el agente Wazuh + Sysmon. |
+| **Kali Linux** | Atacante / Red Team | Generación de tráfico y ataques (`nmap`, `smbclient`, `hydra`, `powershell`). |
+| **VMware Workstation** | Virtualización | Infraestructura aislada en red local virtualizada (`192.168.243.0/24`). |
 
 ---
 
