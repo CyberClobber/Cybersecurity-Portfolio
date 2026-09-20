@@ -21,11 +21,11 @@ Entorno empresarial propio desplegado en entornos virtualizados (VMware) para la
 Resolución de escenarios avanzados e investigación forense en entornos controlados de entrenamiento.
 
 ### 🎯 TryHackMe
-* 🔹 [Nombre de la Sala] - Análisis de logs de servidores web comprometidos.
-* 🔹 [Nombre de la Sala] - Investigación de intrusiones con Splunk.
+* 🔹 Slingshot - Análisis de logs de servidores web comprometidos.
+* 🔹 Investigating with Suricata - Investigación de intrusiones con Splunk.
 
 ### 🕵️ CyberDefenders
-* 🔹 [Nombre del Reto] - Análisis forense digital y respuesta a incidentes (DFIR) sobre una imagen de memoria.
+* 🔹 DeepDive - Análisis forense digital y respuesta a incidentes (DFIR) sobre una imagen de memoria.
 
 ---
 
